@@ -33,8 +33,9 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
 
     $scope.userName = window.localStorage["username"] || "TestUser";
     $scope.tokenExpire = window.localStorage["tokenExpire"];
+    $scope.token = window.localStorage["token"];
 
-    if($scope.tokenExpire)
+    if(new Date($scope.tokenExpire) > new Date(Date.now()))
     {
     	$scope.isLoggedIn = true;
     }
@@ -45,12 +46,23 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
 
     var userName = "TestUser";
 
+    function saveUser() {
+      window.localStorage["username"] = $scope.userName;
+      window.localStorage["tokenExpire"] = $scope.tokenExpire;
+      window.localStorage["token"] = $scope.token;      
+    }
+
 		$scope.newUser = function() {
 			$http.post('/warapi/new_user', 
                {"userName": userName}, 
                {headers:{"Content-Type":"application/json"}}).
         success(function(data, status, headers, config) {
           console.log("New User");
+          $scope.isLoggedIn = true;
+          $scope.tokenExpire = data["expires"];
+          $scope.token = data["token"];
+          $scope.userName = data["user"];
+          saveUser();
         }).
         error(function(data, status, headers, config) {
           $scope.GameState = "GS_FuckUp";
@@ -58,12 +70,35 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
 		}
 
 		$scope.login = function() {
-
+      $http.post('/warapi/login', 
+               {"userName": userName}, 
+               {headers:{"Content-Type":"application/json"}}).
+        success(function(data, status, headers, config) {
+          console.log("Login");
+          $scope.isLoggedIn = true;
+          $scope.tokenExpire = data["expires"];
+          $scope.token = data["token"];
+          $scope.userName = data["user"];
+          saveUser();
+        }).
+        error(function(data, status, headers, config) {
+          $scope.GameState = "GS_FuckUp";
+        });
 		}
 
 		$scope.help = function() {
 
 		}
+
+    $scope.newGame = function() {
+      $rootScope.gameID = "Nacho";
+      $location.assign("/game");
+    }
+
+    $scope.continueGame = function() {
+      $rootScope.gameID = "Nacho";
+      $location.assign("/game");
+    }
 
   }]);
 

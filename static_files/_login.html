@@ -4,6 +4,8 @@
 
 	<div class="button" ng-click="newUser()" ng-hide="isLoggedIn">New User</div>
 	<div class="button" ng-click="login()" ng-hide="isLoggedIn">Login</div>
-	<div class="button" ng-show="isLoggedIn" ng-bind="userName"></div>
+	<div class="button" ng-show="isLoggedIn"><span>User:</span><span ng-bind="userName"></span></div>
+	<div class="button" ng-show="isLoggedIn" ng-click="newGame()">New Game</div>
+	<div class="button" ng-show="canContinue" ng-click="continueGame()">Continue</div>
 	<div class="button" ng-click="help()">Help</div>
 </div>

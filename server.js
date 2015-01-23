@@ -95,16 +95,13 @@ function wargameAPIRouter(res, req) {
 		switch(req.url) {
 			case "/warapi/new_user":
 				req.on('data', function(chunk) {
-					console.log("BODY:" + chunk);
-					req.jsonObj = wargame.newUser("test", "pass");
+					var jo = JSON.parse(chunk);
+					req.jsonObj = wargame.newUser(jo.userName, "pass");
 				});
 
 				req.on('end', function() {
-					console.log("END");
 					wargameResult(res, req.jsonObj);
 				})
-
-				console.log("START");
 			break;
 
 			default:
