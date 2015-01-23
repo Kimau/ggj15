@@ -10,7 +10,7 @@ var warApp = angular.module('warApp', [
 warApp.config(['$routeProvider',
   function($routeProvider) {
     $routeProvider.
-      when('/game', {
+      when('/game/:gameID', {
         templateUrl: '/_game.html',
         controller: 'MyGameController'
       }).
@@ -27,8 +27,8 @@ warApp.config(['$routeProvider',
 
 var warControllers = angular.module('warControllers', []);
 
-warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope', '$location',
-  function($scope, $http, $rootScope, $location) {
+warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
+  function($scope, $http, $rootScope) {
     hackScope = $scope;
 
     $scope.userName = window.localStorage["username"] || "TestUser";
@@ -92,25 +92,32 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
 
     $scope.newGame = function() {
       $rootScope.gameID = "Nacho";
-      $location.assign("/game");
+      location.assign("#game/" + $rootScope.gameID);
     }
 
     $scope.continueGame = function() {
       $rootScope.gameID = "Nacho";
-      $location.assign("/game");
+      location.assign("#game" + $rootScope.gameID);
     }
 
   }]);
 
-warControllers.controller('MyGameController', ['$scope', '$http', '$rootScope', '$location',
-  function($scope, $http, $rootScope, $location) {
+warControllers.controller('MyGameController', ['$scope', '$http', '$rootScope', '$routeParams',
+  function($scope, $http, $rootScope, $routeParams) {
     hackScope = $scope;
+
+    $rootScope.gameID = $routeParams.gameID;
 
     if(window.isLoggedIn == 0)
     {
-    	$location.assign("/login");
+    	location.assign("/login");
       return;
     }
 
     $scope.test = 1;
+    $scope.submit = function() {
+      console.log($scope.text);
+      $scope.text = "";
+      $scope.isWaiting = true; 
+    }
   }]);

@@ -1,3 +1,11 @@
 <div>
-Game
+<h1>War Games</h1>
+<div class="gameMsg" ng-repeat="m in msgs" ng-bind="m.content">
+</div>
+<form ng-submit="submit()">
+  <input type="text" ng-model="text" name="text" ng-disabled="isWaiting" />
+  <input type="submit" id="submit" value="Submit" ng-disabled="isWaiting" />
+  <span class="hint" on-hide="text">Enter text and hit enter:</span>
+</form>
+<footer>Global Game Jam 15 by @EvilKimau</footer>
 </div>
