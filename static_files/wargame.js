@@ -44,8 +44,6 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
     	$scope.isLoggedIn = false;
     }
 
-    var userName = "TestUser";
-
     function saveUser() {
       window.localStorage["username"] = $scope.userName;
       window.localStorage["tokenExpire"] = $scope.tokenExpire;
@@ -53,8 +51,14 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
     }
 
 		$scope.newUser = function() {
+      if($scope.pass.length < 3)
+        return alert("Password too sohrt");
+
+      $scope.showCreateUser = false;
+      $scope.isLoading = true;
+
 			$http.post('/warapi/new_user', 
-               {"userName": userName}, 
+               {"userName": $scope.userName, 'pass': $scope.pass}, 
                {headers:{"Content-Type":"application/json"}}).
         success(function(data, status, headers, config) {
           console.log("New User");
@@ -63,6 +67,7 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
           $scope.token = data["token"];
           $scope.userName = data["user"];
           saveUser();
+          $scope.isLoading = false;
         }).
         error(function(data, status, headers, config) {
           $scope.GameState = "GS_FuckUp";
@@ -70,12 +75,15 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
 		}
 
 		$scope.login = function() {
+      $scope.isLoading = true;
+
       $http.post('/warapi/login', 
-               {"userName": userName}, 
+               {"userName": $scope.userName, 'pass': $scope.pass}, 
                {headers:{"Content-Type":"application/json"}}).
         success(function(data, status, headers, config) {
           console.log("Login");
           $scope.isLoggedIn = true;
+          $scope.isLoading = false;
           $scope.tokenExpire = data["expires"];
           $scope.token = data["token"];
           $scope.userName = data["user"];
@@ -91,8 +99,19 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
 		}
 
     $scope.newGame = function() {
-      $rootScope.gameID = "Nacho";
-      location.assign("#game/" + $rootScope.gameID);
+      $scope.isLoading = true;
+
+      $http.post('/warapi/new_game', 
+               {"userName": $scope.userName, 'token': $scope.pass}, 
+               {headers:{"Content-Type":"application/json"}}).
+        success(function(data, status, headers, config) {
+          console.log("Login");
+          $scope.isLoading = false;
+          location.assign("#game" + data.gameID);
+        }).
+        error(function(data, status, headers, config) {
+          $scope.GameState = "GS_FuckUp";
+        });
     }
 
     $scope.continueGame = function() {
@@ -105,19 +124,41 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
 warControllers.controller('MyGameController', ['$scope', '$http', '$rootScope', '$routeParams',
   function($scope, $http, $rootScope, $routeParams) {
     hackScope = $scope;
-
     $rootScope.gameID = $routeParams.gameID;
 
-    if(window.isLoggedIn == 0)
+    $scope.userName = window.localStorage["username"] || "TestUser";
+    $scope.tokenExpire = window.localStorage["tokenExpire"];
+    $scope.token = window.localStorage["token"];
+
+    if(new Date($scope.tokenExpire) > new Date(Date.now()))
     {
-    	location.assign("/login");
+      $scope.isLoggedIn = true;
+    }
+    else
+    {
+      $scope.isLoggedIn = false;
+      location.assign("/login");
       return;
     }
 
-    $scope.test = 1;
+
+    $scope.isWaiting = true;
     $scope.submit = function() {
       console.log($scope.text);
       $scope.text = "";
       $scope.isWaiting = true; 
     }
+
+    $http.get('/warapi/game', { headers:{
+                "Content-Type":"application/json", 
+                "userName": $scope.userName, 
+                "token": $scope.token, 
+                "gameID": $rootScope.gameID}}).
+        success(function(data, status, headers, config) {
+          $scope.game = data;
+          $scope.isWaiting = false;
+        }).
+        error(function(data, status, headers, config) {
+          $scope.GameState = "GS_FuckUp";
+        });
   }]);

@@ -16,6 +16,7 @@ var mimeTypes = {
 // ------------------------------------------------------------------------------
 // Helper Functions
 function makeError(res, msg) {
+	console.log("ERROR >> " + msg);
 	res.writeHead(400, "text/plain");
 	res.write(msg);
 	res.end();
@@ -88,20 +89,34 @@ function wargameResult(res, obj) {
 }
 
 function wargameAPIRouter(res, req) {
-	req.jsonObj = "ERROR";
-
 	if(req.method == "POST") {
 		// POST METHOD
 		switch(req.url) {
 			case "/warapi/new_user":
 				req.on('data', function(chunk) {
 					var jo = JSON.parse(chunk);
-					req.jsonObj = wargame.newUser(jo.userName, "pass");
+					wargame.newUser(jo.userName, "pass", 
+						function(data) { wargameResult(res, data); } );
 				});
+			break;
 
-				req.on('end', function() {
-					wargameResult(res, req.jsonObj);
-				})
+			case "/warapi/login":
+			req.on('data', function(chunk) {
+					var jo = JSON.parse(chunk);
+					wargame.loginUser(jo.userName, "pass", 
+						function(data) { wargameResult(res, data); } );
+				});
+			break;
+
+			case "/warapi/new_game":
+			req.on('data', function(chunk) {
+					var jo = JSON.parse(chunk);
+					wargame.newGame(jo.userName, jo.token, 
+						function(data) { wargameResult(res, data); } );
+				});
+			break;
+
+			case "/warapi/command":
 			break;
 
 			default:
@@ -110,12 +125,14 @@ function wargameAPIRouter(res, req) {
 	}
 	else if(req.method == "GET") {
 switch(req.url) {
-			case "/warapi/new_user":
-				res.on('data', function(chunk) {
-					console.log("BODY:" + chunk);
-					wargameResult(res, wargame.newUser("test", "pass"));
-				});
-			break;
+			case "/warapi/game":
+				console.log(req.headers);
+				wargame.getGame(
+						req.headers["username"], 
+						req.headers["token"], 
+						req.headers["gameid"], 
+						function(data) { wargameResult(res, data); } );
+				break;
 
 			default:
 				return makeError(res, "Unknown Endpoint - " + req.url);

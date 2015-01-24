@@ -1,6 +1,6 @@
 <div>
 <h1>War Games</h1>
-<div class="gameMsg" ng-repeat="m in msgs" ng-bind="m.content">
+<div class="gameMsg" ng-repeat="m in game.msgs" ng-bind="m[0]">
 </div>
 <form ng-submit="submit()">
   <input type="text" ng-model="text" name="text" ng-disabled="isWaiting" />

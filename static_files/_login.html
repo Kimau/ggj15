@@ -1,11 +1,31 @@
 <div>
 	<h1>War Games</h1>
 	<h3>#GGJ15 by @EvilKimau</h3>
+	<div ng-hide="isLoggedIn">
+		<div class="button" ng-click="showCreateUser = !showCreateUser;">New User</div>
 
-	<div class="button" ng-click="newUser()" ng-hide="isLoggedIn">New User</div>
-	<div class="button" ng-click="login()" ng-hide="isLoggedIn">Login</div>
-	<div class="button" ng-show="isLoggedIn"><span>User:</span><span ng-bind="userName"></span></div>
-	<div class="button" ng-show="isLoggedIn" ng-click="newGame()">New Game</div>
-	<div class="button" ng-show="canContinue" ng-click="continueGame()">Continue</div>
+		<form ng-show="showCreateUser" ng-submit="newUser()">
+		  <input type="text" ng-model="userName" name="userName" />
+		  <input type="text" ng-model="pass" name="pass" />
+		  <input type="submit" id="submit" value="Submit" />
+		  <span style="color:#F00">NOT SECURE - JAM GAME USE SILLY PASS!!!!!</span>
+		</form>
+		
+
+		<div class="button" ng-click="showLogin = !showLogin">Login</div>
+		<form ng-show="showLogin" ng-submit="login()">
+		  <input type="text" ng-model="userName" name="userName" />
+		  <input type="text" ng-model="pass" name="pass" />
+		  <input type="submit" id="submit" value="Submit" />
+		  <span style="color:#F00">NOT SECURE - JAM GAME USE SILLY PASS!!!!!</span>
+		</form>
+	</div>
+
+	<div ng-show="isLoggedIn">
+		<div class="button" ng-show="isLoggedIn"><span>User:</span><span ng-bind="userName"></span></div>
+		<div class="button" ng-show="isLoggedIn" ng-click="newGame()">New Game</div>
+		<div class="button" ng-show="canContinue" ng-click="continueGame()">Continue</div>
+	</div>
+
 	<div class="button" ng-click="help()">Help</div>
 </div>
