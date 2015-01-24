@@ -18,7 +18,7 @@
 	<h3 ng-bind="game.state"></h3>
 	<div class="map">
 	<div id="northMapIndicator">North</div>
-	<div style="white-space:pre-wrap;" ng-bind-html="game.__map.ascii">
+	<div style="white-space:pre-wrap;" ng-bind-html="game.gMap.ascii">
 	</div>
 	</div>
 </div>
@@ -28,12 +28,15 @@
 		  <input type="text" ng-model="userName" name="userName" />
 		</form>
 
+		<div ng-click="debugSave()">Save</div>
+		<div ng-click="debugLoad()">Load</div>
+
 		<h3>Global</h3>
-		<div style="font-family:courier" ng-repeat="m in game.__msgs[0]" ng-bind="m"></div>
+		<div style="font-family:courier" ng-repeat="m in game.msgs[0]" ng-bind="m"></div>
 		<h3>User <span ng-bind="game.users[0]"></span></h3>
-		<div style="font-family:courier" ng-repeat="m in game.__msgs[1]" ng-bind="m"></div>
+		<div style="font-family:courier" ng-repeat="m in game.msgs[1]" ng-bind="m"></div>
 		<h3>User <span ng-bind="game.users[1]"></span></h3>
-		<div style="font-family:courier" ng-repeat="m in game.__msgs[2]" ng-bind="m"></div>
+		<div style="font-family:courier" ng-repeat="m in game.msgs[2]" ng-bind="m"></div>
 
 		
 </div>

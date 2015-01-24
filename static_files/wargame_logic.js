@@ -76,24 +76,27 @@ function context_yesno(yesFunc, noFunc) {
 //-----------------------------------------------------------------------------
 var cmdLib = {
 	"AddAIPlayer" : function(userID, cmdTokens, game) { 
-		game.new_msg("AI Added"); 
+		game.messageObj.newMessage("AI Added"); 
 		game.state = "battle";
 
 		game.users.push("AI");
-		game.__map = new GameMap(10,10);
-		game.new_msg("Map Created");
+		game.gMap = new GameMap();
+		game.gMap.init(10,10);
+		game.messageObj.newMessage("Map Created");
 
-		game.__army0 = new Army(false, game.__map);
-		game.new_msg("Your Army is Ready!", game.users[0]);
+		game.gArmy = [new Army(),new Army()];
+
+		game.gArmy[0].init(false, game.gMap);
+		game.messageObj.newMessage("Your Army is Ready!", 0);
 		
-		game.__army1 = new Army(true, game.__map);
-		game.new_msg("Your Army is Ready!", game.users[1]);
+		game.gArmy[1].init(true, game.gMap);
+		game.messageObj.newMessage("Your Army is Ready!", 1);
 
-		game.__map.genASCII();
+		game.gMap.genASCII();
 	},
 
 	"NoAIPlease" : function(useriD, cmdTokens, game) {
-		game.new_msg("Waiting for other player to Join"); 
+		game.messageObj.newMessage("Waiting for other player to Join"); 
 		game.state = "battle";
 	},
 
@@ -218,75 +221,79 @@ function randomListItem(l) {
 	return l[Math.floor(Math.random()*l.length)];
 }
 
-function generateCaptain() {
-	return {
-		"type": "Captain",
-		"name": randomListItem(randomNames),
-		"colours": [randomListItem(randomColour), randomListItem(randomColour)],
-		"crest": randomListItem(randomCrest),
-		"speed": 10 + Math.random() * 5
-	};
-} 
+function Army() {
+	this.generateCaptain = function() {
+		return {
+			"type": "Captain",
+			"name": randomListItem(randomNames),
+			"colours": [randomListItem(randomColour), randomListItem(randomColour)],
+			"crest": randomListItem(randomCrest),
+			"speed": 10 + Math.random() * 5
+		};
+	} 
 
-function generateFoot() {
-	return {
-		"type": "Foot",
-		"skill": Math.random(),
-		"speed": 1 + Math.random * 3
+	this.generateFoot = function() {
+		return {
+			"type": "Foot",
+			"skill": Math.random(),
+			"speed": 1 + Math.random * 3
+		};
 	}
-}
 
-function generateArcher() {
-	return {
-		"type": "Archer",
-		"skill": Math.random(),
-		"speed": 1 + Math.random * 1
+	this.generateArcher = function() {
+		return {
+			"type": "Archer",
+			"skill": Math.random(),
+			"speed": 1 + Math.random * 1
+		};
 	}
-}
 
-function generateHorse() {
-	return {
-		"type": "Horse",
-		"skill": Math.random(),
-		"speed": 10 + Math.random * 1
+	this.generateHorse = function() {
+		return {
+			"type": "Horse",
+			"skill": Math.random(),
+			"speed": 10 + Math.random * 1
+		};
 	}
+
+	this.loadJSON = function(jo) {
+		this.tentPos = jo.tentPos;
+		this.units = jo.units;
+	}
+
+	this.init = function(isYFlipped, map) {
+		var numCaptains = 5;
+		var numFoot = 100;
+		var numArcher = 20;
+		var numHorse = 25;
+
+		var yFlip;
+		if(isYFlipped) 
+			yFlip = function(a) { return map.height - a - 1; }
+		else
+			yFlip = function(a) { return a; }
+
+		// Place Command Tent
+		this.tentPos = [Math.random()*map.width, yFlip(0)];
+		map.setTile(this.tentPos, 3);
+
+		// Generate Army
+		this.units = [];
+		for (var i = 0; i < numCaptains; i++) { this.units.push(this.generateCaptain()); };
+		for (var i = 0; i < numFoot; i++) { this.units.push(this.generateFoot()); };
+		for (var i = 0; i < numArcher; i++) { this.units.push(this.generateArcher()); };
+		for (var i = 0; i < numHorse; i++) { this.units.push(this.generateHorse()); };
+
+		// Assign ID
+		for (var i = 0; i < this.units.length; i++) {
+			this.units[i].id = i;
+		};			
+	}
+
+	return this;
 }
 
-function Army(isYFlipped, map) {
-
-	var numCaptains = 5;
-	var numFoot = 100;
-	var numArcher = 20;
-	var numHorse = 25;
-
-	var myArmy = {};
-	var yFlip;
-	if(isYFlipped) 
-		yFlip = function(a) { return map.height - a - 1; }
-	else
-		yFlip = function(a) { return a; }
-
-	// Place Command Tent
-	myArmy.tentPos = [Math.random()*map.width, yFlip(0)];
-	map.setTile(myArmy.tentPos, 3);
-
-	// Generate Army
-	units = [];
-	for (var i = 0; i < numCaptains; i++) { units.push(generateCaptain()); };
-	for (var i = 0; i < numFoot; i++) { units.push(generateFoot()); };
-	for (var i = 0; i < numArcher; i++) { units.push(generateArcher()); };
-	for (var i = 0; i < numHorse; i++) { units.push(generateHorse()); };
-
-	// Assign ID
-	for (var i = 0; i < units.length; i++) {
-		units[i].id = i;
-	};
-
-	myArmy.__units = units;
-	return myArmy;
-}
-
-function GameMap(width, height) {
+function GameMap() {
 	var TILE_TYPES = [
 		{ "chance": 40, "ascii": "  ", "desc" : "Grassland" },
 		{ "chance": 10, "ascii": "\u2229\u2229", "desc" : "Hills", "fx" : [["archer",1], ["movement",0.3]] },
@@ -337,33 +344,75 @@ function GameMap(width, height) {
 	this.loadJSON = function(jo) {
 		this.width = jo[0];
 		this.height = jo[1];
+		this.maxTiles = this.width * this.height;
 		this.tile = new Uint8Array(jo[2]);
 		this.genASCII();
 	}
 
-	this.width = width;
-	this.height = height;
-	this.maxTiles = width * height;
+	this.init = function(width, height) {
+		this.width = width;
+		this.height = height;
+		this.maxTiles = width * height;
 
-	var totalChance = 0;
-	var maxTileID = TILE_TYPES.length;
-	for (var i = 0; i < maxTileID; i++) {
-		 totalChance += TILE_TYPES[i].chance;
-	};
+		var totalChance = 0;
+		var maxTileID = TILE_TYPES.length;
+		for (var i = 0; i < maxTileID; i++) {
+			 totalChance += TILE_TYPES[i].chance;
+		};
 
-	tArr = new Uint8Array(this.maxTiles);
-	for (var i = 0; i < this.maxTiles; i++) {
-		var x = Math.random() * totalChance;
-		var tileID = 0;
-		for (tileID = 0; (tileID < maxTileID) && (x > TILE_TYPES[tileID].chance); tileID++)
-			x -= TILE_TYPES[tileID].chance;
+		tArr = new Uint8Array(this.maxTiles);
+		for (var i = 0; i < this.maxTiles; i++) {
+			var x = Math.random() * totalChance;
+			var tileID = 0;
+			for (tileID = 0; (tileID < maxTileID) && (x > TILE_TYPES[tileID].chance); tileID++)
+				x -= TILE_TYPES[tileID].chance;
 
-		if(tileID < maxTileID)
-			tArr[i] = tileID; 
-	};
+			if(tileID < maxTileID)
+				tArr[i] = tileID; 
+		};
 
-	this.tile = tArr;
-	this.genASCII();
+		this.tile = tArr;
+		this.genASCII();
+	}
+
+	return this;
+}
+
+function GameMessages() {
+	this.newMessage = function(text, userID) {
+		var msg = [text, new Date()];
+		if(userID)
+			this.userMsgs[userID].push(msg);
+		else
+			this.globalMsgs.push(msg);
+	}
+
+	this.procesRecentMessages = function(userID, numRecent) {
+		numRecent = numRecent || 20;
+		var recentGlobalMsgs = this.globalMsgs.slice(-numRecent);
+		var recentUserMsgs = this.userMsgs[userID].slice(-numRecent);
+
+		return recentGlobalMsgs.concat(recentUserMsgs).sort(function(a,b){return a[1] > b[1];}).slice(-numRecent);
+	}
+
+	this.toJSON = function() {
+		return {
+			"globalMsgs" : this.globalMsgs,
+			"userMsgs0" : this.userMsgs[0],
+			"userMsgs1" : this.userMsgs[1]
+		}; 
+	}
+
+	this.loadJSON = function(jo) {
+		this.globalMsgs = jo.globalMsgs.map(function(a) { return [a[0],new Date(a[1])]; });
+		this.userMsgs = [
+			jo.userMsgs0.map(function(a) { return [a[0],new Date(a[1])]; }),
+			jo.userMsgs1.map(function(a) { return [a[0],new Date(a[1])]; })];
+	}
+
+	this.globalMsgs = [];
+	this.userMsgs = [[],[]];
+
 	return this;
 }
 
@@ -371,7 +420,7 @@ function GameMap(width, height) {
 //-----------------------------------------------------------------------------
 // Local Game Init
 //-----------------------------------------------------------------------------
-function local_game_init(user, gameID) {
+function WarGameLogic() {
 
 	this.processCommandLine = function(userID, cmdTokens) {
 		// Lookup words in Dict
@@ -419,52 +468,77 @@ function local_game_init(user, gameID) {
 		if(understoodAnything === false)
 			this.error("Cannot Process " + cmd + " from " + user);
 
-		this.process_msgs(user);
+		this.msgs = this.messageObj.procesRecentMessages(userID);
 	}
 
 	this.refresh = function(user) {
-		this.process_msgs(user);
-	}
-
-	this.new_msg = function(text, user) {
-		var userFilter = 0;
-		if(user)
-		{
-			userFilter = this.users.indexOf(user) + 1;
-			if(userFilter === 0)
-				return console.log("Not in game");				
-		}
-
-		var msg = [text, new Date()];
-		this.__msgs[userFilter].push(msg);
-		this.process_msgs(user);
-	}
-
-	this.process_msgs = function(user) {
-		var userFilter = this.users.indexOf(user) + 1;
-		var recentGlobalMsgs = this.__msgs[0].slice(-20);
-		var recentUserMsgs = [];
-		if(userFilter > 0)
-			recentUserMsgs = this.__msgs[userFilter].slice(-20);
-
-		this.msgs = recentGlobalMsgs.concat(recentUserMsgs).sort(function(a,b){return a[1] > b[1];}).slice(-20);
+		var userID = this.users.indexOf(user);
+		this.msgs = this.messageObj.procesRecentMessages(userID);
 	}
 
 	this.error = function(msg) {
 		console.error(msg);
 	};
 
-	this.users = [user];
-	this.state = "lobby";
-	this.gameID = gameID;
+	this.toJSON = function() {
+		if(this.state == "lobby")
+		{
+			return {
+				"users" : this.users,
+				"state" : this.state,
+				"gameID": this.gameID,
+				"msgJSON" : this.messageObj.toJSON()
+			};
+		}
 
-	this.__contextStack = [];
-	this.__msgs = [[],[],[]];
+		return {
+				"users" : this.users,
+				"state" : this.state,
+				"gameID": this.gameID,
+				"msgJSON" : this.messageObj.toJSON(),
+				"mapJSON" : this.gMap.toJSON(),
+				"armyJSON" : [this.gArmy[0], this.gArmy[1]]
+			};
+	};
 
-	this.new_msg("New Game Created");
-	this.new_msg("_"+user+"_ joined game");
-	this.new_msg("Welcome General! \n Do you wish to begin battle with AI?", user);
-	this.__contextStack.push(new context_yesno(cmdLib.AddAIPlayer, cmdLib.NoAIPlease));
+	this.loadJSON = function(jo) {
+		this.users = jo.users;
+		this.state = jo.state;
+		this.gameID = jo.gameID;
+		this.messageObj = new GameMessages();
+		this.messageObj.loadJSON(jo.msgJSON);
+
+		if(this.state == "lobby")
+		{
+			delete(this.gMap);
+			delete(this.gArmy);
+			return;
+		}
+
+		this.gMap = new GameMap();
+		this.gMap.loadJSON(jo.mapJSON);
+		this.gArmy = [new Army(),new Army()];
+		this.gArmy[0].loadJSON(jo.armyJSON[0]);
+		this.gArmy[1].loadJSON(jo.armyJSON[1]);
+	};
+
+	this.init = function(user, gameID) {
+		this.users = [user];
+		this.state = "lobby";
+		this.gameID = gameID;
+
+		this.__contextStack = [];
+		this.messageObj = new GameMessages();
+
+		var userID = this.users.indexOf(user);
+		this.messageObj.newMessage("New Game Created");
+		this.messageObj.newMessage("_"+user+"_ joined game");
+		this.messageObj.newMessage("Welcome General! \n Do you wish to begin battle with AI?", userID);
+		this.__contextStack.push(new context_yesno(cmdLib.AddAIPlayer, cmdLib.NoAIPlease));
+
+
+		this.msgs = this.messageObj.procesRecentMessages(userID);
+	}
 
 	return this;
 }

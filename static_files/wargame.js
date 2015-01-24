@@ -165,7 +165,21 @@ warControllers.controller('MyGameController', ['$scope', '$http', '$rootScope', 
         if (!$scope.$$phase) $scope.$apply() // DIRTY FUCKING HACK
       }
 
-      $scope.game = new local_game_init($scope.userName, 0);
+      $scope.debugSave = function() {
+        window.localStorage["game"] = JSON.stringify($scope.game);
+        console.log("SAVED");
+      } 
+
+      $scope.debugLoad = function() {
+        $scope.game = new WarGameLogic();
+        $scope.game.loadJSON(JSON.parse(window.localStorage["game"]));
+        console.log("LOADED");
+
+        $scope.refresh();
+      }
+
+      $scope.game = new WarGameLogic();
+      $scope.game.init($scope.userName, 0);
       $scope.isWaiting = false;
     }
     else
