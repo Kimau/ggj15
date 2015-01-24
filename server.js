@@ -3,7 +3,7 @@ var http = require('http'),
 		path = require('path'),
 		fs = require('fs'),
 		zlib = require('zlib'),
-		wargame = require('./wargame_logic.js');
+		wargame = require('./wargame_handler.js');
 
 var mimeTypes = {
 		"html": "text/html",

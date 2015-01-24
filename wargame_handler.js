@@ -209,7 +209,7 @@ function funcPostGameCommand(user, token, gameID, command) {
 	}	
 }
 
-// wargame_logic.js
+// wargame_handler.js
 // ========
 module.exports = {
 	newUser: funcNewUser,
