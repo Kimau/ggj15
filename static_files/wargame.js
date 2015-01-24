@@ -107,7 +107,8 @@ warControllers.controller('MyLoginController', ['$scope', '$http', '$rootScope',
         success(function(data, status, headers, config) {
           console.log("Login");
           $scope.isLoading = false;
-          location.assign("#game" + data.gameID);
+
+          location.assign("#game/" + data.gameID);
         }).
         error(function(data, status, headers, config) {
           $scope.GameState = "GS_FuckUp";
@@ -130,7 +131,7 @@ warControllers.controller('MyGameController', ['$scope', '$http', '$rootScope', 
     $scope.tokenExpire = window.localStorage["tokenExpire"];
     $scope.token = window.localStorage["token"];
 
-    if(new Date($scope.tokenExpire) > new Date(Date.now()))
+    if(wargame_local || (new Date($scope.tokenExpire) > new Date(Date.now())))
     {
       $scope.isLoggedIn = true;
     }
@@ -149,16 +150,38 @@ warControllers.controller('MyGameController', ['$scope', '$http', '$rootScope', 
       $scope.isWaiting = true; 
     }
 
-    $http.get('/warapi/game', { headers:{
-                "Content-Type":"application/json", 
-                "userName": $scope.userName, 
-                "token": $scope.token, 
-                "gameID": $rootScope.gameID}}).
-        success(function(data, status, headers, config) {
-          $scope.game = data;
-          $scope.isWaiting = false;
-        }).
-        error(function(data, status, headers, config) {
-          $scope.GameState = "GS_FuckUp";
-        });
+    if(wargame_local)
+    {
+      $scope.submit = function() {
+        console.log($scope.text);
+        $scope.game.command($scope.userName, $scope.text);
+        $scope.text = "";
+        $scope.isWaiting = false;
+        if (!$scope.$$phase) $scope.$apply() // DIRTY FUCKING HACK
+      }
+
+      $scope.refresh = function() {
+        $scope.game.refresh($scope.userName);
+        if (!$scope.$$phase) $scope.$apply() // DIRTY FUCKING HACK
+      }
+
+      $scope.game = new local_game_init($scope.userName, 0);
+      $scope.isWaiting = false;
+    }
+    else
+    {
+      $http.get('/warapi/game', { headers:{
+                  "Content-Type":"application/json", 
+                  "userName": $scope.userName, 
+                  "token": $scope.token, 
+                  "gameID": $rootScope.gameID}}).
+          success(function(data, status, headers, config) {
+            $scope.game = data;
+            $scope.isWaiting = false;
+          }).
+          error(function(data, status, headers, config) {
+            $scope.GameState = "GS_FuckUp";
+          });
+    }
+
   }]);

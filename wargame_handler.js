@@ -63,7 +63,7 @@ function funcLoginUser(user, pass, cb) {
 function batchPutGame(game, gamedb) {
 	var dbOps = [];
 	var msgs = game.msgs;
-	game.msgs = undefined;
+	delete(game.msgs);
 
 	for (var i = 0; i < msgs.length; i++) {
 		dbOps.push( {
@@ -202,11 +202,7 @@ function funcPostGameCommand(user, token, gameID, command) {
 
 	// TODO :: Process Command
 
-	return {
-		"users" : [user, "pickle"],
-		"gameID" : gameID,
-		"msgs" : [["New Game Created", 0, new Date().toISOString()]]
-	}	
+	return "TODO";
 }
 
 // wargame_handler.js

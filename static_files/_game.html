@@ -1,11 +1,41 @@
-<div>
-<h1>War Games</h1>
-<div class="gameMsg" ng-repeat="m in game.msgs" ng-bind="m[0]">
+<header><h1>War Games</h1></header>
+<div id="textArea">
+	<div class="gameMsg" ng-repeat="m in game.msgs" ng-bind="m[0]">
+	</div>
+	<form ng-submit="submit()">
+	  <input class="msgInput" type="text" ng-model="text" name="text" ng-disabled="isWaiting" />
+	  <input type="submit" id="submit" value="Submit" ng-disabled="isWaiting" />
+	  <span class="hint" on-hide="text">Enter text and hit enter:</span>
+	</form>
 </div>
-<form ng-submit="submit()">
-  <input type="text" ng-model="text" name="text" ng-disabled="isWaiting" />
-  <input type="submit" id="submit" value="Submit" ng-disabled="isWaiting" />
-  <span class="hint" on-hide="text">Enter text and hit enter:</span>
-</form>
+
+<div id="gameSidebar">
+	<h2>
+		<span ng-bind="game.users[0]"></span>
+		vs
+		<span ng-bind="game.users[1]"></span>
+	</h2>
+	<h3 ng-bind="game.state"></h3>
+	<div class="map">
+	<div id="northMapIndicator">North</div>
+	<div style="white-space:pre-wrap;" ng-bind-html="game.__map.ascii">
+	</div>
+	</div>
+</div>
+
+<div class="debug">
+		<form ng-submit="refresh()">
+		  <input type="text" ng-model="userName" name="userName" />
+		</form>
+
+		<h3>Global</h3>
+		<div style="font-family:courier" ng-repeat="m in game.__msgs[0]" ng-bind="m"></div>
+		<h3>User <span ng-bind="game.users[0]"></span></h3>
+		<div style="font-family:courier" ng-repeat="m in game.__msgs[1]" ng-bind="m"></div>
+		<h3>User <span ng-bind="game.users[1]"></span></h3>
+		<div style="font-family:courier" ng-repeat="m in game.__msgs[2]" ng-bind="m"></div>
+
+		
+</div>
+
 <footer>Global Game Jam 15 by @EvilKimau</footer>
-</div>

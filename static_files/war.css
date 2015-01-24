@@ -1,6 +1,88 @@
+body {
+	margin: 0px;
+	padding: 0px;
+}
+
+header,
+footer {
+	padding: 0px;
+	margin: 0px;
+	background: #111;
+	color: #EEE;
+	display: block;
+	text-align: center;
+}
+
 .gameMsg {
-  background: #EEE;
   padding: 3px;
   font-family: monospace;
   color: #330;
+}
+
+.debug {
+	//display:none;
+	border: 4px dotted #F00;
+	margin: 10px;
+	padding: 10px;
+	background: #FEE;
+}
+
+.map { 
+	font-family:monospace;
+	background: yellow;
+	color: brown;
+	position: relative;
+	border: 1px solid brown;
+	padding: 13px 0px 0px 0px;
+	width: 160px;
+	height: 180px;
+	margin: auto;
+}
+
+#northMapIndicator {
+	position: absolute;
+	top: 0px;
+	width: 100%;
+	display: block;
+}
+
+#textArea {
+	position:relative;
+	vertical-align:bottom;
+	display: inline-block;
+	width: calc(100vw - 240px);
+	height: 600px;
+	border: 2px solid #333;
+	margin: 0px;
+	padding: 0px;
+}
+
+#textArea form {
+	display: block;
+	position: absolute;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+	background: gray;
+	padding: 2px;
+}
+
+#textArea form input {
+	max-width: 100%;
+}
+#textArea form .msgInput {
+	width: 80%;
+}
+
+#textArea form .hint {
+	display: none;
+}
+
+#gameSidebar {
+	vertical-align: top;
+	width: 200px;
+	height: 600px;
+	display: inline-block;
+	text-align:center;
+	background: #EEE;
 }
