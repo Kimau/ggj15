@@ -32,76 +32,82 @@ var wargame_flavour = {
 	"false" : ["no", "nope", "negative", "nay"]
 }
 
-function context() {
-	this.isValid = function(cmdTokens) {
-		return false;
-	}
-
-	this.command = function(userID, cmdTokens, game) {
-		
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Yes No Context
-//-----------------------------------------------------------------------------
-function context_yesno(yesFunc, noFunc) {
-	this.isValid = function(cmdTokens) {
-		for (var i = 0; i < cmdTokens.length; i++) {
-			if(cmdTokens[i] === true)
-				return true;
-			if(cmdTokens[i] === false)
-				return true;
-		};
-
-		return false;
-	}
-
-	this.command = function(userID, cmdTokens, game) {
-		for (var i = 0; i < cmdTokens.length; i++) {
-			if(cmdTokens[i] === true)
-				{ yesFunc(userID, cmdTokens, game); return true; }
-			if(cmdTokens[i] === false)
-				{ noFunc(userID, cmdTokens, game); return true; }
-		};
-
-		console.log("Should not reach this point");
-		return false;
-	}
-
-}
-
 //-----------------------------------------------------------------------------
 // Game Functions
 //-----------------------------------------------------------------------------
-var cmdLib = {
-	"AddAIPlayer" : function(userID, cmdTokens, game) { 
-		game.messageObj.newMessage("AI Added"); 
-		game.state = "battle";
+function ContextStack() {
+	var cmdLib = {
+		"AddAIPlayer" : function(userID, cmdTokens, game) { 
+			game.messageObj.newMessage("AI Added"); 
+			game.state = "battle";
 
-		game.users.push("AI");
-		game.gMap = new GameMap();
-		game.gMap.init(10,10);
-		game.messageObj.newMessage("Map Created");
+			game.users.push("AI");
+			game.gMap = new GameMap();
+			game.gMap.init(10,10);
+			game.messageObj.newMessage("Map Created");
 
-		game.gArmy = [new Army(),new Army()];
+			game.gArmy = [new Army(),new Army()];
 
-		game.gArmy[0].init(false, game.gMap);
-		game.messageObj.newMessage("Your Army is Ready!", 0);
-		
-		game.gArmy[1].init(true, game.gMap);
-		game.messageObj.newMessage("Your Army is Ready!", 1);
+			game.gArmy[0].init(false, game.gMap);
+			game.messageObj.newMessage("Your Army is Ready!", 0);
+			
+			game.gArmy[1].init(true, game.gMap);
+			game.messageObj.newMessage("Your Army is Ready!", 1);
 
-		game.gMap.genASCII();
-	},
+			game.gMap.genASCII();
+		},
 
-	"NoAIPlease" : function(useriD, cmdTokens, game) {
-		game.messageObj.newMessage("Waiting for other player to Join"); 
-		game.state = "battle";
-	},
+		"NoAIPlease" : function(useriD, cmdTokens, game) {
+			game.messageObj.newMessage("Waiting for other player to Join"); 
+			game.state = "battle";
+		},
 
-	"NoOp" : function(useriD, cmdTokens, game) {}
-};
+		"NoOp" : function(useriD, cmdTokens, game) {}
+	};
+
+	var contextTypes = {
+		"YesNo" : function(userID, cmdTokens, game, context) {
+			for (var i = 0; i < cmdTokens.length; i++) {
+				if(cmdTokens[i] === true)
+					{ cmdLib[context.yes](userID, cmdTokens, game); return true; }
+				if(cmdTokens[i] === false)
+					{ cmdLib[context.no](userID, cmdTokens, game); return true; }
+			};
+
+			return false;
+		}
+	};
+
+	this.AddContext = function(context) {
+		if(context.type in contextTypes)
+			this.stack.push(context);
+		else
+			console.error("Unkown Type " + context);
+	}
+
+	this.ProcessCmd = function(game, userID, cmdTokens) {
+		for (var i = this.stack.length - 1; i >= 0; i--) {
+			// Find Valid Context
+			if(contextTypes[this.stack[i].type](userID, cmdTokens, game, this.stack[i]))
+			{
+				// Consume Command by Context
+				delete(this.stack[i]);
+				this.stack = this.stack.slice(0,i).concat(this.stack.slice(i+1));
+				return true;
+			}
+		};
+
+		console.log("Cannot Process: " + cmdTokens);
+		return false;
+	}
+
+	this.loadJSON = function(jo) {
+		this.stack = jo.stack;
+	}
+
+	this.stack = [];
+	return this;
+}
 
 var randomNames = [
   "Adelina",
@@ -432,25 +438,7 @@ function WarGameLogic() {
 		});
 
 		// Check Contexts for Action
-		for (var i = this.__contextStack.length - 1; i >= 0; i--) {
-
-			// Find Valid Context
-			if(this.__contextStack[i].isValid(cmdTokens))
-			{
-
-				// Consume Command by Context
-				if(this.__contextStack[i].command(userID, cmdTokens, this))
-				{
-					delete(this.__contextStack[i]);
-					this.__contextStack = this.__contextStack.slice(0,i).concat(this.__contextStack.slice(i+1));
-				}
-
-				return true;
-			}
-		};
-
-		console.log("Cannot Porcess: " + cmdTokens);
-		return false;
+		return this.context.ProcessCmd(this, userID, cmdTokens);
 	}
 
 	this.command = function(user, cmd) {
@@ -487,7 +475,8 @@ function WarGameLogic() {
 				"users" : this.users,
 				"state" : this.state,
 				"gameID": this.gameID,
-				"msgJSON" : this.messageObj.toJSON()
+				"msgJSON" : this.messageObj.toJSON(),
+				"context" : this.context
 			};
 		}
 
@@ -496,6 +485,7 @@ function WarGameLogic() {
 				"state" : this.state,
 				"gameID": this.gameID,
 				"msgJSON" : this.messageObj.toJSON(),
+				"context" : this.context,
 				"mapJSON" : this.gMap.toJSON(),
 				"armyJSON" : [this.gArmy[0], this.gArmy[1]]
 			};
@@ -507,6 +497,8 @@ function WarGameLogic() {
 		this.gameID = jo.gameID;
 		this.messageObj = new GameMessages();
 		this.messageObj.loadJSON(jo.msgJSON);
+		this.context = new ContextStack();
+		this.context.loadJSON(jo.context);
 
 		if(this.state == "lobby")
 		{
@@ -527,14 +519,14 @@ function WarGameLogic() {
 		this.state = "lobby";
 		this.gameID = gameID;
 
-		this.__contextStack = [];
+		this.context = new ContextStack();
 		this.messageObj = new GameMessages();
 
 		var userID = this.users.indexOf(user);
 		this.messageObj.newMessage("New Game Created");
 		this.messageObj.newMessage("_"+user+"_ joined game");
 		this.messageObj.newMessage("Welcome General! \n Do you wish to begin battle with AI?", userID);
-		this.__contextStack.push(new context_yesno(cmdLib.AddAIPlayer, cmdLib.NoAIPlease));
+		this.context.AddContext({type:"YesNo", "yes": "AddAIPlayer", "no": "NoAIPlease"});
 
 
 		this.msgs = this.messageObj.procesRecentMessages(userID);
