@@ -17,7 +17,7 @@
 	</h2>
 	<h3 ng-bind="game.state"></h3>
 	<div class="map">
-	<div id="northMapIndicator">North</div>
+	<div id="northMapIndicator">&uarr; North ... 1 mile</div>
 	<div style="white-space:pre-wrap;" ng-bind-html="game.gMap.ascii">
 	</div>
 	</div>
@@ -31,14 +31,10 @@
 		<div ng-click="debugSave()">Save</div>
 		<div ng-click="debugLoad()">Load</div>
 
-		<h3>Global</h3>
-		<div style="font-family:courier" ng-repeat="m in game.msgs[0]" ng-bind="m"></div>
-		<h3>User <span ng-bind="game.users[0]"></span></h3>
-		<div style="font-family:courier" ng-repeat="m in game.msgs[1]" ng-bind="m"></div>
-		<h3>User <span ng-bind="game.users[1]"></span></h3>
-		<div style="font-family:courier" ng-repeat="m in game.msgs[2]" ng-bind="m"></div>
-
-		
+		<div class="debugMap">
+			<div class="unit p1" ng-repeat="u in game.gArmy[0].units" ng-class="u.type" ng-style="u.debugStyle" ng-bind="u.id"></div>
+			<div class="unit p2" ng-repeat="u in game.gArmy[1].units" ng-class="u.type" ng-style="u.debugStyle" ng-bind="u.id"></div>
+		</div>		
 </div>
 
 <footer>Global Game Jam 15 by @EvilKimau</footer>

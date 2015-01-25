@@ -24,7 +24,26 @@ var wargame_dict = {
 	"false": false,
 	"no" : false,
 	"nay" : false,
-	"nope" : false
+	"nope" : false,
+
+	"give" : ">give",
+	"march" : ">march",
+	"hold" : ">hold",
+	"return" : ">return",
+	"join" : ">join",
+
+	"north" : [0,-1],
+	"east" : [1,0],
+	"south" : [0,1],
+	"west" : [-1,0],
+
+	"captain" : ".captain",
+	"foot" : ".foot",
+	"footmen" : ".foot",
+	"archer" : ".archer",
+	"bowmen" : ".archer",
+	"horse" : ".horse",
+	"mounted" : ".horse"
 }; 
 
 var wargame_flavour = {
@@ -43,6 +62,13 @@ var message_templates = {
 	]
 }
 
+function vec_add(a,b) { return [a[0]+b[0], a[1]+b[1]]; }
+function vec_sub(a,b) { return [a[0]-b[0], a[1]-b[1]]; }
+function vec_div(a,b) { return [a[0]/b[0], a[1]/b[1]]; }
+function vec_mul(a,b) { return [a[0]*b[0], a[1]*b[1]]; }
+function vec_scale(a,l) { return [a[0]*l, a[1]*l]; }
+function vec_len(a) { return Math.sqrt(a[0]*a[0] + a[1]*a[1]); }
+function vec_norm(a) { var l = 1.0 / vec_len(a); return vec_scale(a,l); }
 function MakeMessage(msg_id, data) {
 	var x = randomListItem(message_templates[msg_id]);
 	for (var i = 0; i < data.length; i++) {
@@ -51,6 +77,8 @@ function MakeMessage(msg_id, data) {
 
 	return x;
 }
+
+var MOVE_TICK_TIME = 1000;
 
 //-----------------------------------------------------------------------------
 // Game Functions
@@ -74,6 +102,8 @@ function ContextStack() {
 			game.openingArmyIntroMsg(1);
 			
 			game.gMap.genASCII();
+
+			game.moveTickPromise = setTimeout(moveTick, MOVE_TICK_TIME, game);
 		},
 
 		"NoAIPlease" : function(useriD, cmdTokens, game) {
@@ -104,6 +134,52 @@ function ContextStack() {
 			console.error("Unkown Type " + context);
 	}
 
+	this.handleTargetWords = function(game, unit, cmdTokens) {
+		console.log("TODO");
+
+		return { "target": [0,0] };
+	}
+
+	this.handleDirection = function(game, unit, cmdTokens) {
+		var dir = [0,0];
+		for(var i=0; i<cmdTokens.length; ++i)
+		{
+			if((typeof(cmdTokens[i]) == "object") && (cmdTokens[i].length == 2))
+			{
+				dir = vec_add(dir, cmdTokens[i]);
+			}
+		}
+
+		dir = vec_norm(dir);
+		return { "dir": dir };
+	}
+
+	this.cmdGive = function(game, userID, cmdTokens) { console.log("TODO"); return; }
+	
+	// FORMAL : >March UNIT (dir|:to :target)
+	this.cmdMarch = function(game, userID, cmdTokens) {
+
+		var unit = cmdTokens[1];
+		if(unit.pos == undefined)
+		{
+			unit.pos = game.gArmy[userID].tentPos;
+		}
+ 
+		if(cmdTokens[2] == ":to")
+		{
+			unit.movement = this.handleTargetWords(game, unit, cmdTokens.slice(3));
+		}
+		else
+		{
+			unit.movement = this.handleDirection(game, unit, cmdTokens.slice(2));
+		}
+		return true; 
+	}
+
+	this.cmdHold = function(game, userID, cmdTokens) { console.log("TODO"); return; }
+	this.cmdReturn = function(game, userID, cmdTokens) { console.log("TODO"); return; }
+	this.cmdJoin = function(game, userID, cmdTokens) { console.log("TODO"); return; }
+
 	this.ProcessCmd = function(game, userID, cmdTokens) {
 		for (var i = this.stack.length - 1; i >= 0; i--) {
 			// Find Valid Context
@@ -116,7 +192,15 @@ function ContextStack() {
 			}
 		};
 
-		console.log("Cannot Process: " + cmdTokens);
+		switch(cmdTokens[0]) {
+			case ">give":   return this.cmdGive(game, userID, cmdTokens);
+			case ">march":  return this.cmdMarch(game, userID, cmdTokens);
+			case ">hold":   return this.cmdHold(game, userID, cmdTokens);
+			case ">return": return this.cmdReturn(game, userID, cmdTokens);
+			case ">join":   return this.cmdJoin(game, userID, cmdTokens);
+		}
+
+		console.log("Cannot Process: <" + cmdTokens.join("><") + ">");
 		return false;
 	}
 
@@ -254,7 +338,8 @@ function Army() {
 			"colours": [randomListItem(randomColour), randomListItem(randomColour)],
 			"crest": randomListItem(randomCrest),
 			"speed": 10 + Math.random() * 5,
-			"group": []
+			"group": [],
+			"pos" : this.tentPos
 		};
 	} 
 
@@ -309,6 +394,18 @@ function Army() {
 		}
 	}
 
+	this.makeStyle = function(i) {
+		if(this.units[i].pos)
+		{
+			this.units[i].debugStyle = { 
+				"left" : this.units[i].pos[0] * 40 + "px",
+				"top" : this.units[i].pos[1] * 40 + "px",
+				"color" : this.units[i].colours[0],
+				"background": this.units[i].colours[1]
+				};
+		}
+	}
+
 	this.loadJSON = function(jo) {
 		this.tentPos = jo.tentPos;
 		this.units = jo.units;
@@ -341,6 +438,7 @@ function Army() {
 		// Assign ID
 		for (var i = 0; i < this.units.length; i++) {
 			this.units[i].id = i;
+			this.makeStyle(i);
 		};			
 
 		this.genSummary();
@@ -486,6 +584,24 @@ function GameMessages() {
 	return this;
 }
 
+//-----------------------------------------------------------------------------
+// Move Tick
+//-----------------------------------------------------------------------------
+function moveTick(game) {
+	for (var i = 0; i < game.gArmy[0].units.length; i++) {
+		var u = game.gArmy[0].units[i];
+		if(u.movement && u.pos)
+		{
+			if(u.movement.dir)
+				u.pos = vec_add(u.pos, vec_scale(u.movement.dir, u.speed * 0.01));
+
+			game.gArmy[0].makeStyle(i);
+		}
+	};
+
+	game.moveTickPromise = setTimeout(moveTick, MOVE_TICK_TIME, game);
+};
+
 
 //-----------------------------------------------------------------------------
 // Local Game Init
@@ -494,21 +610,29 @@ function WarGameLogic() {
 
 	this.processCommandLine = function(userID, cmdTokens) {
 		// Lookup words in Dict
+		var game = this;
 		cmdTokens = cmdTokens.map(function(a) { 
 			if(a in wargame_dict)
 				return wargame_dict[a];
+			else if(a.match(/^[0-9]*$/g))
+				return parseInt(a);
+			else if(game.isCaptName(userID, a))
+				return game.lastUnitSearch;
 			else
 			  return ":" + a;
-		});
+		}); 
 
 		// Check Contexts for Action
-		return this.context.ProcessCmd(this, userID, cmdTokens);
+		if(this.context.ProcessCmd(this, userID, cmdTokens))
+			return true;
+
+		return false;
 	}
 
 	this.command = function(user, cmd) {
 		var understoodAnything = false;
 		// Split Commansds into Sentance Lines then break them into word tokens
-		var cmdLines = cmd.split(".").map(function(c) { return c.split(/\W/).filter(function(a) {return(a.length > 1);}).map(function(b){ return b.toLowerCase(); }); });
+		var cmdLines = cmd.split(".").map(function(c) { return c.split(/\W/).filter(function(a) {return(a.length > 0);}).map(function(b){ return b.toLowerCase(); }); });
 
 		var userID = this.users.indexOf(user);
 		for (var i = 0; i < cmdLines.length; i++)
@@ -518,10 +642,20 @@ function WarGameLogic() {
 		}
 
 		if(understoodAnything === false)
-			this.error("Cannot Process " + cmd + " from " + user);
+			this.messageObj.newMessage("I don't understand you.")
 
 		this.msgs = this.messageObj.procesRecentMessages(userID);
 	}
+
+	this.isCaptName = function(userID, unit_name) {
+		this.lastUnitSearch = this.getCaptainByName(userID, unit_name);
+		return (this.lastUnitSearch)?true:false;
+	}
+
+	this.getCaptainByName = function(userID, unit_name) {
+		return hackScope.game.gArmy[userID].units.filter(
+			function(a){ return (a.name !== undefined) && (a.name.toLowerCase() == unit_name); })[0];
+	};
 
 	this.openingArmyIntroMsg = function(userID) {
 		this.messageObj.newMessage("Your Army is Ready!", userID);
@@ -541,6 +675,10 @@ function WarGameLogic() {
 				["color1", sumObj.captainRoster[i][2]],
 				["color2", sumObj.captainRoster[i][3]] 
 				]), userID);
+/*
+			this.messageObj.newMessage("The enemy is to the " + 
+			(userID==0)?"south":"north" + 
+			". _Give_ us our troops and we shall _march_ on them.", userID); */
 		};
 	};
 
@@ -597,6 +735,9 @@ function WarGameLogic() {
 		this.gArmy = [new Army(),new Army()];
 		this.gArmy[0].loadJSON(jo.armyJSON[0]);
 		this.gArmy[1].loadJSON(jo.armyJSON[1]);
+
+		// Start Timers
+		this.moveTickPromise = setTimeout(moveTick, MOVE_TICK_TIME, this);
 	};
 
 	this.init = function(user, gameID) {
@@ -612,7 +753,6 @@ function WarGameLogic() {
 		this.messageObj.newMessage("_"+user+"_ joined game");
 		this.messageObj.newMessage("Welcome General! \n Do you wish to begin battle with AI?", userID);
 		this.context.AddContext({type:"YesNo", "yes": "AddAIPlayer", "no": "NoAIPlease"});
-
 
 		this.msgs = this.messageObj.procesRecentMessages(userID);
 	}
