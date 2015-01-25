@@ -14,9 +14,22 @@ footer {
 }
 
 .gameMsg {
-  padding: 3px;
+  padding: 0px 3px 0px 3px;
   font-family: monospace;
   color: #330;
+}
+
+.gameMsg .date {
+	color: #888;
+	padding-right: 4px;
+	font-size: 11px;
+	margin: 0px;
+}
+
+.gameMsg .name { 
+	text-decoration: underline;
+	font-weight: 900;
+	color: #C5C;
 }
 
 .debug {

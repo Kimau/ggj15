@@ -32,6 +32,26 @@ var wargame_flavour = {
 	"false" : ["no", "nope", "negative", "nay"]
 }
 
+var message_templates = {
+	"captain_ready" : [
+		"_{name}_ stands ready with their crest, {color1} {crest} on {color2}, flying proudly behind them",
+		"{color1} {crest} stands out on _{name}_ chest as they await your orders",
+		"Ready! Captain _{name}_ hold's their hand to their {color1} and {color2} crest",
+		"_{name}_ the {color1} Captain fiddles with a {color2} on their lepal awaiting your pleasure",
+		"_{name}_ the {crest}. They sit waiting on orders",
+		"Your new captain _{name}_ holds a glass eager to depart"
+	]
+}
+
+function MakeMessage(msg_id, data) {
+	var x = randomListItem(message_templates[msg_id]);
+	for (var i = 0; i < data.length; i++) {
+		x = x.replace("{"+data[i][0] + "}", data[i][1]);
+	};
+
+	return x;
+}
+
 //-----------------------------------------------------------------------------
 // Game Functions
 //-----------------------------------------------------------------------------
@@ -47,13 +67,12 @@ function ContextStack() {
 			game.messageObj.newMessage("Map Created");
 
 			game.gArmy = [new Army(),new Army()];
-
 			game.gArmy[0].init(false, game.gMap);
-			game.messageObj.newMessage("Your Army is Ready!", 0);
-			
 			game.gArmy[1].init(true, game.gMap);
-			game.messageObj.newMessage("Your Army is Ready!", 1);
 
+			game.openingArmyIntroMsg(0);
+			game.openingArmyIntroMsg(1);
+			
 			game.gMap.genASCII();
 		},
 
@@ -234,7 +253,8 @@ function Army() {
 			"name": randomListItem(randomNames),
 			"colours": [randomListItem(randomColour), randomListItem(randomColour)],
 			"crest": randomListItem(randomCrest),
-			"speed": 10 + Math.random() * 5
+			"speed": 10 + Math.random() * 5,
+			"group": []
 		};
 	} 
 
@@ -242,7 +262,7 @@ function Army() {
 		return {
 			"type": "Foot",
 			"skill": Math.random(),
-			"speed": 1 + Math.random * 3
+			"speed": 1 + Math.random() * 3
 		};
 	}
 
@@ -250,7 +270,7 @@ function Army() {
 		return {
 			"type": "Archer",
 			"skill": Math.random(),
-			"speed": 1 + Math.random * 1
+			"speed": 1 + Math.random() * 1
 		};
 	}
 
@@ -258,13 +278,41 @@ function Army() {
 		return {
 			"type": "Horse",
 			"skill": Math.random(),
-			"speed": 10 + Math.random * 1
+			"speed": 10 + Math.random() * 1
 		};
+	}
+
+	this.idToUnit = function(id) {
+		for (var i = 0; i < this.units.length; i++) {
+			if(this.units[i].id == id)
+				return this.units[i];
+		};
+	}
+
+	this.sumTypes = function(b,a) {
+		b[a.type] = 1 + (b[a.type] || 0);
+		return b;
+	}
+
+	this.genSummary = function() {
+		this.summary = this.units.reduce(this.sumTypes, {});
+
+		this.summary.captainRoster = [];
+		for (var i = 0; i < this.units.length; i++) {
+			if(this.units[i].type == "Captain") 
+					this.summary.captainRoster.push([
+						this.units[i].name, 
+						this.units[i].crest, 
+						this.units[i].colours[0],
+						this.units[i].colours[1],
+						this.units[i].group.map(this.idToUnit).reduce(this.sumTypes, {})]);
+		}
 	}
 
 	this.loadJSON = function(jo) {
 		this.tentPos = jo.tentPos;
 		this.units = jo.units;
+		this.genSummary();
 	}
 
 	this.init = function(isYFlipped, map) {
@@ -294,6 +342,8 @@ function Army() {
 		for (var i = 0; i < this.units.length; i++) {
 			this.units[i].id = i;
 		};			
+
+		this.genSummary();
 	}
 
 	return this;
@@ -398,7 +448,21 @@ function GameMessages() {
 		var recentGlobalMsgs = this.globalMsgs.slice(-numRecent);
 		var recentUserMsgs = this.userMsgs[userID].slice(-numRecent);
 
-		return recentGlobalMsgs.concat(recentUserMsgs).sort(function(a,b){return a[1] > b[1];}).slice(-numRecent);
+		var msgPack = recentGlobalMsgs.concat(recentUserMsgs);
+		msgPack = msgPack.sort(function(a,b){
+			return +(a[1] > b[1]) || +(a[1] === b[1]) - 1;
+		});
+		msgPack = msgPack.slice(-numRecent);
+
+		msgPack = msgPack.map(function(a){
+			return '<span class="date">' +
+			new Date(a[1]).toTimeString().replace(/:.. .*/g,"") +
+			'</span><span class="msg">' +
+			a[0].replace(/_([^_]*)_/g,'<span class="name">$1</span>') +
+			'</span>';
+		});
+
+		return msgPack;
 	}
 
 	this.toJSON = function() {
@@ -458,6 +522,27 @@ function WarGameLogic() {
 
 		this.msgs = this.messageObj.procesRecentMessages(userID);
 	}
+
+	this.openingArmyIntroMsg = function(userID) {
+		this.messageObj.newMessage("Your Army is Ready!", userID);
+
+		var sumObj = this.gArmy[userID].summary;
+		this.messageObj.newMessage("You have " + 
+			sumObj["Captain"] + " captains, " + 
+			sumObj["Horse"] + " horse, " + 
+			sumObj["Archer"] + " archers, and " + 
+			sumObj["Foot"] + " foot", userID);
+
+		for (var i = 0; i < sumObj.captainRoster.length; i++) {
+
+			this.messageObj.newMessage(MakeMessage("captain_ready", [
+				["name", sumObj.captainRoster[i][0]],
+				["crest", sumObj.captainRoster[i][1]],
+				["color1", sumObj.captainRoster[i][2]],
+				["color2", sumObj.captainRoster[i][3]] 
+				]), userID);
+		};
+	};
 
 	this.refresh = function(user) {
 		var userID = this.users.indexOf(user);
