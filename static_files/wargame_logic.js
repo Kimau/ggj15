@@ -69,6 +69,15 @@ function vec_mul(a,b) { return [a[0]*b[0], a[1]*b[1]]; }
 function vec_scale(a,l) { return [a[0]*l, a[1]*l]; }
 function vec_len(a) { return Math.sqrt(a[0]*a[0] + a[1]*a[1]); }
 function vec_norm(a) { var l = 1.0 / vec_len(a); return vec_scale(a,l); }
+function vec_compass(a) {
+	var COMPASS_DIR = [
+		"east", "southeast", "south", "southwest", 
+		"west", "northwest", "north", "northeast"];
+	var angle = Math.atan2( a[1], a[0] );
+	var octant = Math.round( 8.0 * angle / (2.0*Math.PI) + 8.0 ) % 8;
+	return COMPASS_DIR[octant];
+}
+
 function MakeMessage(msg_id, data) {
 	var x = randomListItem(message_templates[msg_id]);
 	for (var i = 0; i < data.length; i++) {
@@ -76,7 +85,7 @@ function MakeMessage(msg_id, data) {
 	};
 
 	return x;
-}
+} 
 
 var MOVE_TICK_TIME = 1000;
 
@@ -168,12 +177,35 @@ function ContextStack() {
 		if(cmdTokens[2] == ":to")
 		{
 			unit.movement = this.handleTargetWords(game, unit, cmdTokens.slice(3));
+			if(unit.movement)
+			{
+				this.messageObj.newMessage(MakeMessage("captain_ready", [
+					["name", unit.name],
+					["crest", unit.crest],
+					["color1", unit.colours[0]],
+					["color2", unit.colours[1]], 
+					["dir", vec_compass(unit.movement.dir)] 
+					]), userID); 
+				return true; 	
+			}
 		}
 		else
 		{
 			unit.movement = this.handleDirection(game, unit, cmdTokens.slice(2));
+			if(unit.movement)
+			{
+				this.messageObj.newMessage(MakeMessage("captain_ready", [
+					["name", unit.name],
+					["crest", unit.crest],
+					["color1", unit.colours[0]],
+					["color2", unit.colours[1]], 
+					["target", targetWord] 
+					]), userID);
+				return true; 	
+			}
 		}
-		return true; 
+
+		return false;		
 	}
 
 	this.cmdHold = function(game, userID, cmdTokens) { console.log("TODO"); return; }
@@ -200,7 +232,7 @@ function ContextStack() {
 			case ">join":   return this.cmdJoin(game, userID, cmdTokens);
 		}
 
-		console.log("Cannot Process: <" + cmdTokens.join("><") + ">");
+		console.log("Cannot Process: {" + cmdTokens.join("}{") + "}");
 		return false;
 	}
 
