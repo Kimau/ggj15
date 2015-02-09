@@ -15,9 +15,9 @@ var mimeTypes = {
 
 // ------------------------------------------------------------------------------
 // Helper Functions
-function makeError(res, msg) {
+function makeError(res, msg, errorCode) {
 	console.log("ERROR >> " + msg);
-	res.writeHead(400, "text/plain");
+	res.writeHead(error || 400, "text/plain");
 	res.write(msg);
 	res.end();
 }
